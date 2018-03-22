@@ -8,11 +8,11 @@
 
 - master：唯一分支
 
-## xxl-job使用了解（必读）
-
+## xxl-job使用了解（读前必读）
 - [xxl-job使用教程](doc/xxl-job-task-simple.md)
 
-## xxl-job原理了解（选读）
+## xxl-job原理了解（读后了解）
+- [xxl-job调度中心的任务配置说明](doc/xxl-job-configure.md)
 - [xxl-job架构](doc/xxl-job-architecture.md)
 - [xxl-job调度中心原理](doc/xxl-job-center.md)
 - [xxl-job执行器原理](doc/xxl-job-task-simple.md)
