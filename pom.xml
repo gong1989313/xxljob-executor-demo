@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.zehua.demo</groupId>
+    <artifactId>xxljob-executor-demo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <!--各个子模块(项目)可以单独使用-->
+    <modules>
+        <module>order-system</module>
+        <module>user-system1</module>
+        <module>user-system2</module>
+        <module>user-system</module>
+  </modules>
+    <packaging>pom</packaging>
+
+    <!--作者/项目基本信息 start-->
+    <developers>
+        <developer>
+            <name>zehua</name>
+            <email>523786283@qq.com</email>
+        </developer>
+    </developers>
+    <!--作者/项目基本信息 end-->
+</project>

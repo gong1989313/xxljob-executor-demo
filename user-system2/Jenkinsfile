@@ -1,0 +1,227 @@
+node {
+
+    // 带 * 号的组内修改
+    // 带 ! 号的每次都要检查，可能需要修改
+    // 不带符号的基本无需修改
+
+    /************************************************************
+     ********* 全局变量（需修改） ********************************
+     ************************************************************/
+    // ! git 仓库路径
+    gitUrl = 'http://192.168.1.122:3000/architecture/spring-boot-demo.git'
+    // ! git 分支
+    gitBranch = 'dev'
+    // ! git 使用的jenkins证书id
+    gitCredential = 'e8787bb6-1d71-4daf-af69-1f420242c4d1'
+    // ! k8s 替换的namespace（不填默认 default
+    String k8sNs = 'dev-arch'
+    // ! k8s 项目使用文件-由模块负责人确定（多个文件逗号隔开，靠前的文件优先执行
+    k8sPrj = 'spring-demo.yaml'
+
+    // * 组名称-对应docker私库（如：架构组 architecture）
+    dockerGroup = 'architecture'
+    // ! maven项目中间地址（当maven项目结构有多层存在时，则填路径，否则填空）
+    String mavenPom = ''
+    // ! maven项目名称
+    mavenProj = 'spring-boot-demo
+
+    /************************************************************
+     ********* 全局变量 ******************************************
+     ************************************************************/
+    // ssh 登录免密证书id
+    sshCreditial = 'ssh-151'
+    // maven地址
+    MVN_HOME = '/var/jenkins_home/tools/hudson.tasks.Maven_MavenInstallation/mvn'
+    // 文件夹分隔
+    DELIMITER = '/'
+    // jar文件结尾
+    SUFFIX = '.jar'
+
+    // jenkins挂载在宿主机的所有项目地址
+    volumeRoot = '/root/jenkins/jobs';
+    // jenkins在容器中的所有项目地址
+    jenkinsRoot = '/var/jenkins_home/jobs'
+    // 具体项目工作区
+    projectWorkspace = 'workspace'
+
+    // jenkins挂载在宿主机的项目地址
+    volumeDeployRootPath = volumeRoot + DELIMITER + env.JOB_NAME + DELIMITER + projectWorkspace
+    // jenkins在容器中的项目路径
+    jenkinsDeployRootPath = env.WORKSPACE
+    // jenkins挂载在宿主机的构建地址
+    volumeDeployPath = ''
+    // jenkins在容器中的构建路径
+    jenkinsDeployPath = ''
+
+    isSingle = false
+
+    stage ('pre') {
+
+        echo '预处理'
+
+        if (k8sNs == null || k8sNs.length() == 0)
+            k8sNs = 'default'
+
+        sIndex = gitUrl.lastIndexOf(DELIMITER)
+        eIndex = gitUrl.lastIndexOf('.')
+
+        prjName = gitUrl.substring(sIndex + 1, eIndex)
+        if (prjName.equalsIgnoreCase(mavenProj)) {
+            println 'git项目名称：' + prjName + ', 与构建项目名称一致，为单模块项目'
+            volumeDeployPath = volumeDeployRootPath
+            jenkinsDeployPath = jenkinsDeployRootPath
+            isSingle = true
+        } else {
+            println 'git项目名称：' + prjName + ', 与构建项目名称不同： ' + mavenProj + ' 为多模块项目'
+            volumeDeployPath = volumeDeployRootPath + DELIMITER + (mavenPom == null || mavenPom.size() == 0 ? mavenPom : mavenPom + DELIMITER) + mavenProj
+            jenkinsDeployPath = jenkinsDeployRootPath + DELIMITER + (mavenPom == null || mavenPom.size() == 0 ? mavenPom : mavenPom + DELIMITER) + mavenProj
+        }
+
+        println 'jenkins挂载在宿主机的项目地址：' + volumeDeployRootPath
+        println 'jenkins在容器中的项目路径：' + jenkinsDeployRootPath
+        println 'jenkins挂载在宿主机的构建地址：' + volumeDeployPath
+        println 'jenkins在容器中的构建路径：' + jenkinsDeployPath
+
+    }
+
+    stage ('git') {
+        git branch: gitBranch, credentialsId: gitCredential, url: gitUrl
+    }
+
+    stage ('mvn') {
+
+        echo 'start mvn'
+
+        //暂时使用sh，后边替换为 ArtifactoryMavenBuild
+        stage ('mvn-clean') {
+            sh """
+			cd ${jenkinsDeployPath}
+			${MVN_HOME}/bin/mvn clean
+			"""
+        }
+
+        stage ('mvn-package') {
+            thisPath = jenkinsDeployRootPath + DELIMITER + (mavenPom == null || mavenPom.size() == 0 ? mavenPom : mavenPom + DELIMITER)
+            if(isSingle) {
+                sh """
+                cd ${thisPath}
+                ${MVN_HOME}/bin/mvn -B package -am -amd -DskipTests
+                """
+            } else {
+                sh """
+                cd ${thisPath}
+                ${MVN_HOME}/bin/mvn -B package -pl ${mavenProj} -am -amd -DskipTests
+                """
+            }
+        }
+
+        echo 'stop mvn'
+
+    }
+
+    // 本次镜像
+    newImage = ''
+
+    stage ('docker') {
+
+        echo 'start docker'
+
+        sshagent(credentials: [sshCreditial]){
+
+            stage ('docker-pre') {
+
+                // 版本以及构建次数
+                sh """
+				cd ${jenkinsDeployPath}/target
+				ls *.jar > version.tmp
+				sed -i s/${SUFFIX}//g version.tmp
+				sed -i s/${mavenProj}-//g version.tmp
+				"""
+
+                version = sh(returnStdout: true, script: "cat ${jenkinsDeployPath}/target/version.tmp").trim()
+
+                originalImage = '192.168.1.207' + DELIMITER + dockerGroup + DELIMITER + mavenProj + ':' + version
+                newImage = originalImage + '-' + (currentBuild.number)
+
+                // 设置账号密码，要必要再设置
+//                sh """
+//				ssh -t -l root 192.168.1.151 << EOF
+//				docker login -u * -p *
+//				exit
+//				EOF
+//				"""
+
+            }
+
+            stage ('docker-build') {
+                sh """
+				ssh -t -l root 192.168.1.151 << EOF
+				cd ${volumeDeployPath}/target
+				cp ../Dockerfile Dockerfile
+				docker build . -t ${newImage}
+				exit
+				EOF
+				"""
+            }
+
+            stage ('docker-push') {
+                sh "ssh -t -l root 192.168.1.151 docker push ${newImage}"
+            }
+
+        }
+
+        echo 'stop docker'
+
+    }
+
+    stage ("k8s") {
+
+        sshagent(credentials: [sshCreditial]){
+
+            stage ("k8s-pre") {
+
+                // 兼容 shell 语法，数组默认使用空格隔开
+                k8sPrjs = k8sPrj.replaceAll(",", " ")
+
+                // sed 正则语法，特殊字符使用 \
+                tmpOriginalImage = originalImage.replaceAll("/", "\\\\/")
+                tmpNewImage = newImage.replaceAll("/", "\\\\/")
+
+                sh """
+				cd ${jenkinsDeployPath}/k8s
+				for k8s in ${k8sPrjs}
+				do
+				sed -i 's/${tmpOriginalImage}/${tmpNewImage}/g' \$k8s
+				sed -i 's/namespace: *[a-zA-Z0-9\\/\\-]*/namespace: ${k8sNs}/g' \$k8s
+				done
+				"""
+            }
+
+            stage ("k8s-apply") {
+                sh """
+				ssh -t -l root 192.168.1.151 << EOF
+				cd ${volumeDeployPath}/k8s
+				kubectl apply -f ${k8sPrj}
+				exit
+				EOF
+				"""
+            }
+
+            stage ("k8s-health") {
+                //如果存在terminating，说明上一次容器还未销毁，继续监听
+                //apply成功，默认后续k8s步骤都执行成功，如有错误请检查相关k8s日志
+                while(true) {
+                    print('等待上一次部署程序终止...')
+                    sleep(2)
+                    status = sh(returnStdout: true, script: "ssh -t -l root 192.168.1.151 kubectl get all -n ${k8sNs}")
+                    if (!status.contains("Terminating"))
+                        break
+                }
+                print('k8s相关工作执行完毕')
+            }
+
+        }
+
+    }
+
+}
