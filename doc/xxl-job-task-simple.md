@@ -7,14 +7,7 @@
 
 ### 1，基础项目构建
 项目构建分两种方式：
-- 1，是下载[demo项目](http://192.168.1.122:3000/architecture/distributed-job/src/develop/bg-job-executor-demo)，然后修改一下成为自己的业务任务中心系统
-        
-        demo中任务代码demo放在com.banggood.job.executor.task包下，大家可以参考
-        
-- 2，按照棒谷骨架生成基础项目
-  - 2.1 按照[文档](http://192.168.1.122:3000/architecture/Wiki/src/master/maven-archetype/maven-archetype-create-project.md)生成棒谷基础框架
-  - 2.2 按照[文档](http://192.168.1.122:3000/architecture/Wiki/src/master/security-clear.md)剔除掉骨架里面的`Spring Security`框架
-  - 2.3 `pom.xml`引入`xxl-job-core`的依赖
+- `pom.xml`引入`xxl-job-core`的依赖
   
     ```xml
       <properties>
@@ -28,9 +21,8 @@
         <version>${xxl.job.core.version}</version>
       </dependency>
   ```
-    
-    - 2.4 配置XXL-JOB的执行器项目配置
-        - 2.4.1 Java配置代码如下
+- 配置XXL-JOB的执行器项目配置
+  - 1 Java配置代码如下
         
         ```java
           @Configuration
@@ -73,7 +65,7 @@
           }
         ```
         
-        - 2.4.2 增加`application.yaml`配置
+  - 2 增加`application.yaml`配置
         
         ```yaml
           # log config
@@ -85,7 +77,7 @@
           xxl:
             job:
               admin:
-                addresses: ${XXL-JOB-ADMIN-URL:http://192.168.1.151:8480/xxl-job-admin} #调度中心url
+                addresses: ${XXL-JOB-ADMIN-URL:http://168.1.151:8480/xxl-job-admin} #调度中心url
               executor:
                 appname: xxl-job-executor-sample  #当前任务器的名字
                 ip:
@@ -103,7 +95,7 @@
         |调度任务的端口|在编写Kubernetes的Yaml文件时，必须开放期端口|
         |AccessToken|调度中心和执行中心必须一致，否则任务调度不到|
         
-        - 2.4.3 在resources的根目录下增加`logback.xml`的日志配置
+  - 3 在resources的根目录下增加`logback.xml`的日志配置
         
         ```xml
           <?xml version="1.0" encoding="UTF-8"?>
@@ -145,7 +137,7 @@
           </configuration>
         ```
         
-        - 2.4.4 编写任务代码，继承`IJobHandler`，用`@Service`将任务类加入Spring，使用`@JobHander("xxx")`指定JobKey。
+  - 4 编写任务代码，继承`IJobHandler`，用`@Service`将任务类加入Spring，使用`@JobHander("xxx")`指定JobKey。
         
         ```java
           @Service
@@ -163,7 +155,7 @@
         上面`@JobHander`指定的JobKey要和指定运行模式为***BEAN模式***下，和***JobHandler***要一致。关于执行参数请参考[官方代码](https://github.com/xuxueli/xxl-job/tree/master/xxl-job-executor-samples/xxl-job-executor-sample-springboot/src/main/java/com/xxl/job/executor/service/jobhandler)使用。
         
         
-- 3，新增任务执行器，在【执行器管理】点击【新增执行器】按钮，会弹出框，填写完信息后，点击保存会显示多一条新增的记录
+- 新增任务执行器，在【执行器管理】点击【新增执行器】按钮，会弹出框，填写完信息后，点击保存会显示多一条新增的记录
     
         注意：在新增执行器的时候，需要填写的AppName必须与上面配置文件配置的`AppName`一致，否则自动注册无法关联。
     
@@ -173,7 +165,7 @@
     - 3.1 重启执行器系统后，在配置正确的情况下，如下图所示，也就是***OnLine 机器***已经找到对应的节点
         ![执行器注册成功](res/task-machine.png)
         
-- 4，新增并执行任务，查看日志
+- 新增并执行任务，查看日志
     - 4.1，在【任务管理】界面点击【新增任务】按钮，注意填写***BEAN模式***和***JobHandler***
     - 4.2，新增成功后，点击【执行】按钮执行任务
     ![新增任务成功](res/add-task-success.png)
