@@ -9,7 +9,7 @@
 - master：唯一分支
 
 ## xxl-job执行器demo说明
-- [xxl-job执行器demo说明](doc/xxl-job-executor.md)
+- [xxl-job执行器demo说明](doc/xxl-job-demo.md)
 
 ## xxl-job使用了解（读前必读）
 - [xxl-job使用教程](doc/xxl-job-task-simple.md)
